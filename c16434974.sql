@@ -170,19 +170,35 @@ GROUP BY specID, specDesc;
 
 --Report 7
 SELECT specID, specDesc AS "Specification Description",
+--The sum lets it work since group by doesn't work on aggregated values
 TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "Total Cost",
 
     (CASE
-        WHEN (specCommission + (qtyUsed * prodUnitPrice) > 10000) THEN "High Value"
-        WHEN (specCommission + (qtyUsed * prodUnitPrice) BETWEEN 10000 AND 8000) THEN "Medium Cost"
-        ELSE "Low Cost"  
-    END)
+        WHEN (SUM(specCommission + (qtyUsed * prodUnitPrice)) > 10000) THEN 'High Value'
+        WHEN (SUM(specCommission + (qtyUsed * prodUnitPrice)) BETWEEN 10000 AND 8000) THEN 'Medium Cost'
+        ELSE 'Low Cost'
+    END) AS "Cost Range"
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
-GROUP BY specID, specDesc,
-    (CASE
-        WHEN (specCommission + (qtyUsed * prodUnitPrice) > 10000) THEN "High Value"
-        WHEN (specCommission + (qtyUsed * prodUnitPrice) BETWEEN 10000 AND 8000) THEN "Medium Cost"
-        ELSE "Low Cost"  
-     END);
+GROUP BY specID, specDesc;
+
+--Report 8
+--SELECT CONCAT(, CONCAT(, CONCAT( , CONCAT(, , qtyUsed, ' poducts at', ' a cost of ', SUM(qtyUsed * prodUnitPrice)) AS "High Value Specifications"
+--' and the total cost ','including commision was  TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "High Value Specifications")
+
+SELECT CONCAT('Specification ', 
+CONCAT(specID, 
+CONCAT(' ', 
+CONCAT(specDesc, 
+CONCAT(' used a total of products at a cost of ', 
+CONCAT(SUM(qtyUsed * prodUnitPrice), 
+CONCAT(' and the total cost including commission was',
+TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')
+))))))) AS "High Value Specifications"
+
+FROM SPECIFICATION
+NATURAL JOIN SPECPROD
+NATURAL JOIN PRODUCT
+GROUP BY specID, specDesc
+HAVING SUM(specCommission + (qtyUsed * prodUnitPrice)) > 10000;
