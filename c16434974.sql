@@ -191,11 +191,12 @@ SELECT CONCAT('Specification ',
 CONCAT(specID, 
 CONCAT(' ', 
 CONCAT(specDesc, 
-CONCAT(' used a total of products at a cost of ', 
-CONCAT(SUM(qtyUsed * prodUnitPrice), 
+CONCAT(' used a total of ',
+CONCAT(SUM(qtyUsed), 
+CONCAT(' products at a cost of ',
 CONCAT(' and the total cost including commission was',
 TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')
-))))))) AS "High Value Specifications"
+)))))))) AS "High Value Specifications"
 
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
