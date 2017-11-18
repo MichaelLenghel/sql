@@ -1,5 +1,4 @@
-
-DROP TABLE SpecProd;
+OP TABLE SpecProd;
 --ALTER TABLE SpecProd DROP CONSTRAINT ProdType_Product_FK;
 
 DROP TABLE Product;
@@ -126,27 +125,30 @@ insert into SPECPROD (specID, prodCat, prodID, qtyUsed) values (103, 'C', 102, 3
 insert into SPECPROD (specID, prodCat, prodID, qtyUsed) values (104, 'X', 101, 20);
 
 --Report 1
-SELECT designerID, fullNameD, emailAdr, UPPER(specDesc)
+SELECT designerID, fullNameD, emailAdr, UPPER(specDesc) AS "Spec Description"
+--I used a natural join since as designerID is common to both
 FROM DESIGNER NATURAL JOIN SPECIFICATION
 ORDER BY DESIGNERID DESC, specDesc DESC;
 
 --Report 2
 SELECT CONCAT(prodCat, prodID) as prodIDAndProdCat, 
-UPPER(prodDescription), UPPER(catDesc),TO_CHAR(prodUnitPrice, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')
+UPPER(prodDescription) AS "Product Description", UPPER(catDesc),TO_CHAR(prodUnitPrice, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Product Price"
 FROM PRODUCT NATURAL JOIN PRODTYPE
 ORDER BY prodCat ASC, prodUnitPrice DESC;
 
 --Report 3
 SELECT specID, clientID, fullNameC, specDesc,
-TO_DATE(specDate, 'DD/MM/YYYY'), TO_CHAR(specCommission, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')
+--FML did not work for the euro symbol, and I used the L99G999D99MI', 'NLS_CURRENCY = ''€'' instead.
+TO_DATE(specDate, 'DD/MM/YYYY') AS "Specification Date", TO_CHAR(specCommission, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Spec Copmission"
 FROM SPECIFICATION NATURAL JOIN CLIENT
 ORDER BY specCommission DESC;
 
 --Report 4
-SELECT specID AS "SPECIFICATION ID", clientID, fullNameC AS "CLIENT NAME", fullNameD AS "DESIGNER NAME", specDesc AS "DESCRIPTION COMMISSION",
+SELECT specID AS "SPECIFICATION ID", clientID, fullNameC AS "CLIENT NAME", DESIGNER.designerID, fullNameD AS "DESIGNER NAME", specDesc AS "DESCRIPTION COMMISSION",
 TO_DATE(specDate, 'DD/MM/YYYY') AS "DATE COMMISSION", TO_CHAR(specCommission, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "AMT"
 FROM SPECIFICATION 
 NATURAL JOIN CLIENT
+--Used inner join to join the third table where designerID was in both the specification and the designer table
 INNER JOIN DESIGNER ON DESIGNER.designerID = SPECIFICATION.designerID
 ORDER BY specCommission DESC;
 
@@ -154,7 +156,7 @@ ORDER BY specCommission DESC;
 --NATURAL JOIN look at whats common
 SELECT specID AS "SPECIFICATION ID", specDesc AS "SPECIFICATION DESCRIPTION",
 prodDescription AS "Product Name", prodUnitPrice AS "Product Price", qtyUsed,
-prodUnitPrice * qtyUsed AS "Total Price per Product"
+TO_CHAR(prodUnitPrice * qtyUsed, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Total Price per Product"
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT;
@@ -172,21 +174,20 @@ GROUP BY specID, specDesc;
 SELECT specID, specDesc AS "Specification Description",
 --The sum lets it work since group by doesn't work on aggregated values
 TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "Total Cost",
-
+    --Case, when, else is the equivalent and if else in SQL
     (CASE
+        -- When (Condition evalues to true) THEN (return an operation to be performed)
         WHEN (SUM(specCommission + (qtyUsed * prodUnitPrice)) > 10000) THEN 'High Value'
         WHEN (SUM(specCommission + (qtyUsed * prodUnitPrice)) BETWEEN 10000 AND 8000) THEN 'Medium Cost'
         ELSE 'Low Cost'
-    END) AS "Cost Range"
+    END) AS "Cost Range" --Column name will be Cost Range
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
 GROUP BY specID, specDesc;
 
 --Report 8
---SELECT CONCAT(, CONCAT(, CONCAT( , CONCAT(, , qtyUsed, ' poducts at', ' a cost of ', SUM(qtyUsed * prodUnitPrice)) AS "High Value Specifications"
---' and the total cost ','including commision was  TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "High Value Specifications")
-
+--Combine all parts of the desired string
 SELECT CONCAT('Specification ', 
 CONCAT(specID, 
 CONCAT(' ', 
@@ -194,12 +195,15 @@ CONCAT(specDesc,
 CONCAT(' used a total of ',
 CONCAT(SUM(qtyUsed), 
 CONCAT(' products at a cost of ',
+CONCAT(SUM(qtyUsed * prodUnitPrice),
 CONCAT(' and the total cost including commission was',
-TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')
-)))))))) AS "High Value Specifications"
+--Trim removes all the spaces from the start of the string
+CONCAT(' ', LTRIM(TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' '))
+)))))))))) AS "High Value Specifications"
 
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
 GROUP BY specID, specDesc
+--Having is the equivalent of the where clause, but for the group by statement
 HAVING SUM(specCommission + (qtyUsed * prodUnitPrice)) > 10000;
