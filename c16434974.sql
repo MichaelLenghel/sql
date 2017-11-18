@@ -1,8 +1,10 @@
-OP TABLE SpecProd;
---ALTER TABLE SpecProd DROP CONSTRAINT ProdType_Product_FK;
+--Student Number: c16434974
+--Student Name: Michael Lenghel
+--Program Code: DT228/2
+
+DROP TABLE SpecProd;
 
 DROP TABLE Product;
---ALTER TABLE PRODUCT DROP CONSTRAINT Product_SpecProd_FK;
 
 DROP TABLE Specification;
 
@@ -12,15 +14,19 @@ DROP TABLE Designer;
 
 DROP TABLE Client;
 
+--Create tables
+
 CREATE TABLE Client
 (
 	clientID             NUMBER(6) NOT NULL ,
 	fullNameC             VARCHAR2(50) NOT NULL ,
 	emailAdr             VARCHAR2(30) NOT NULL ,
+--Ensure that clientID is a primary key
 CONSTRAINT  clientID_PK PRIMARY KEY (clientID),
+--Ensure that emails are unique
 CONSTRAINT unique_emailC UNIQUE(emailAdr),
---ensure @ and . symbols are entered and that . symbol and @ symbol are not the first entries
-CONSTRAINT ensureSymbolC CHECK (emailAdr like '%@%' AND emailAdr like '%.%' AND emailAdr NOT LIKE '[_.]' AND emailAdr NOT LIKE '[_@]')
+--ensure @ and . symbols are entered at least once and that the . symbol and the @ symbol are not the first entries
+CONSTRAINT ensureSymbol_CHK CHECK (emailAdr like '%@%' AND emailAdr like '%.%' AND emailAdr NOT LIKE '.%' AND emailAdr NOT LIKE '@%')
 );
 
 CREATE TABLE Designer
@@ -31,8 +37,10 @@ CREATE TABLE Designer
 	dRateofPay           NUMBER(4,2) NULL ,
 CONSTRAINT  designerID_PK PRIMARY KEY (designerID),
 CONSTRAINT unique_emailD UNIQUE(emailAdr),
-CONSTRAINT ensureSymbolD CHECK (emailAdr like '%@%' AND emailAdr like '%.%' AND emailAdr NOT LIKE '[_.]' AND emailAdr NOT LIKE '[_@]'),
-CONSTRAINT ratePay CHECK (dRateofPay <  75.99)
+--ensure @ and . symbols are entered at least once and that the . symbol and the @ symbol are not the first entries
+CONSTRAINT ensureSymbolD_CHK CHECK (emailAdr like '%@%' AND emailAdr like '%.%' AND emailAdr NOT LIKE '.%' AND emailAdr NOT LIKE '@%'),
+--Prevents the rate of pay from being greater than 75.99
+CONSTRAINT ratePay_CHK CHECK (dRateofPay <  75.99)
 );
 
 CREATE TABLE Specification
@@ -47,8 +55,10 @@ CREATE TABLE Specification
 CONSTRAINT  specID_PK PRIMARY KEY (specID),
 CONSTRAINT Client_Specification_FK FOREIGN KEY (clientID) REFERENCES Client (clientID) ON DELETE SET NULL,
 CONSTRAINT Designer_Specification_FK FOREIGN KEY (designerID) REFERENCES Designer (designerID) ON DELETE SET NULL,
-CONSTRAINT chkHrsWorked CHECK (designHrsWorked <  150),
-CONSTRAINT chk_commision_price CHECK (specCommission < 16000)
+--Ensures hours worked does nto exceed 150
+CONSTRAINT HrsWorked_CHK CHECK (designHrsWorked <  150),
+--Ensures the specificaiton commission doesn ot exceed 16,000
+CONSTRAINT commision_price_CHK CHECK (specCommission < 16000)
 );
 
 CREATE TABLE ProdType
@@ -56,7 +66,8 @@ CREATE TABLE ProdType
 	prodCat              CHAR(1) NOT NULL ,
 	catDesc              varchar2(50) NULL ,
 CONSTRAINT  prodCat_PK PRIMARY KEY (prodCat),
-CONSTRAINT val_prod_cat CHECK (prodCat IN 'G'
+--Ensures that the only letters that can be entered for the prodCat are G, L, C, S and X
+CONSTRAINT val_prod_cat_CHK CHECK (prodCat IN 'G'
                                     OR (prodCat IN 'L') OR (prodCat IN 'C')
                                     OR (prodCat IN 'S') OR (prodCat IN 'X'))
 );
@@ -70,7 +81,8 @@ CREATE TABLE Product
 	prodCat              CHAR(1) NOT NULL ,
 CONSTRAINT  prodID_prodCat_PK PRIMARY KEY (prodID,prodCat),
 CONSTRAINT ProdType_Product_FK FOREIGN KEY (prodCat) REFERENCES ProdType (prodCat),
-CONSTRAINT chkPrice CHECK (prodUnitPrice BETWEEN 5.00 AND 45.0)
+--Ensures that the price per unit is between the range of 5 and 45.
+CONSTRAINT chkPrice_CHK CHECK (prodUnitPrice BETWEEN 5.00 AND 45.0)
 );
 
 CREATE TABLE SpecProd
@@ -83,6 +95,8 @@ CONSTRAINT  specID_prodID_prodCat_PK PRIMARY KEY (specID,prodID,prodCat),
 CONSTRAINT Specification_SpecProd_FK FOREIGN KEY (specID) REFERENCES Specification (specID),
 CONSTRAINT Product_SpecProd_FK FOREIGN KEY (prodID, prodCat) REFERENCES Product (prodID, prodCat)
 );
+
+--Insert data into the relevant tables
 
 insert into CLIENT (clientID, fullNameC, emailAdr) values (101, 'J.J. Abrams', 'jjab@sw.com');
 insert into CLIENT (clientID, fullNameC, emailAdr) values (201, 'Lawrence Kasdan', 'lkas@sw.com');
@@ -124,53 +138,68 @@ insert into SPECPROD (specID, prodCat, prodID, qtyUsed) values (103, 'C', 101, 1
 insert into SPECPROD (specID, prodCat, prodID, qtyUsed) values (103, 'C', 102, 3);
 insert into SPECPROD (specID, prodCat, prodID, qtyUsed) values (104, 'X', 101, 20);
 
---Report 1
+------------------Report 1------------------
 SELECT designerID, fullNameD, emailAdr, UPPER(specDesc) AS "Spec Description"
---I used a natural join since as designerID is common to both
+--I used a natural join since designerID is common to both tables
 FROM DESIGNER NATURAL JOIN SPECIFICATION
+--Orders designerID and specification description by descending order.
 ORDER BY DESIGNERID DESC, specDesc DESC;
 
---Report 2
+------------------Report 2------------------
 SELECT CONCAT(prodCat, prodID) as prodIDAndProdCat, 
+--UPPER function prints the strings in upper case and TO_CHAR formats the output in a specified order.
+--'L99G999D99MI', 'NLS_CURRENCY = ''€'' ' was used to add the euro symbol in front of the prodUnitPrice as FML format did not work for the euro symbol
 UPPER(prodDescription) AS "Product Description", UPPER(catDesc),TO_CHAR(prodUnitPrice, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Product Price"
+--I used a natural join since as prodCat is common to both
 FROM PRODUCT NATURAL JOIN PRODTYPE
+--Orders prodCat in ascending order and prodUnitPrice in descending order
 ORDER BY prodCat ASC, prodUnitPrice DESC;
 
---Report 3
+------------------Report 3------------------
 SELECT specID, clientID, fullNameC, specDesc,
 --FML did not work for the euro symbol, and I used the L99G999D99MI', 'NLS_CURRENCY = ''€'' instead.
 TO_DATE(specDate, 'DD/MM/YYYY') AS "Specification Date", TO_CHAR(specCommission, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Spec Copmission"
+--I used a natural join since as clientID is common to both
 FROM SPECIFICATION NATURAL JOIN CLIENT
+--Orders specCommision into descending order
 ORDER BY specCommission DESC;
 
---Report 4
+------------------Report 4------------------
 SELECT specID AS "SPECIFICATION ID", clientID, fullNameC AS "CLIENT NAME", DESIGNER.designerID, fullNameD AS "DESIGNER NAME", specDesc AS "DESCRIPTION COMMISSION",
+--TO_DATE formatted the date to have the days first, then the months as digits and then the year
 TO_DATE(specDate, 'DD/MM/YYYY') AS "DATE COMMISSION", TO_CHAR(specCommission, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "AMT"
+--Natural join was used as they share clientID as a column
 FROM SPECIFICATION 
 NATURAL JOIN CLIENT
---Used inner join to join the third table where designerID was in both the specification and the designer table
+--Used inner join to join the third table as designerID was in both the specification and the designer table
 INNER JOIN DESIGNER ON DESIGNER.designerID = SPECIFICATION.designerID
+--Orders by specCommission in descending order
 ORDER BY specCommission DESC;
 
---Report 5
+------------------Report 5------------------
 --NATURAL JOIN look at whats common
 SELECT specID AS "SPECIFICATION ID", specDesc AS "SPECIFICATION DESCRIPTION",
 prodDescription AS "Product Name", prodUnitPrice AS "Product Price", qtyUsed,
+--TO_char formatted out to have the euro symbol
 TO_CHAR(prodUnitPrice * qtyUsed, 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ') AS "Total Price per Product"
+--Joins all three columns since the columns are shared for specification and specprod adn then specprod and product
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT;
 
---Report 6
+------------------Report 6------------------
 SELECT specID, specDesc AS "Specification Description",
 --The sum lets it work since group by doesn't work on aggregated values
+--SUM Was used as an aggreate function since Group By would not work otherwise
 TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "Total Cost"
+--Joins all three columns since the columns are shared for specification and specprod adn then specprod and product
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
+--Groups all the specIDs with specDesc to allow the sum functiuon above to work and effectively find the total cost for each product
 GROUP BY specID, specDesc;
 
---Report 7
+------------------Report 7------------------
 SELECT specID, specDesc AS "Specification Description",
 --The sum lets it work since group by doesn't work on aggregated values
 TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' ')  AS "Total Cost",
@@ -181,12 +210,13 @@ TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CU
         WHEN (SUM(specCommission + (qtyUsed * prodUnitPrice)) BETWEEN 10000 AND 8000) THEN 'Medium Cost'
         ELSE 'Low Cost'
     END) AS "Cost Range" --Column name will be Cost Range
+ --Joins all three columns since the columns are shared for specification and specprod adn then specprod and product
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
 GROUP BY specID, specDesc;
 
---Report 8
+------------------Report 8------------------
 --Combine all parts of the desired string
 SELECT CONCAT('Specification ', 
 CONCAT(specID, 
@@ -200,7 +230,7 @@ CONCAT(' and the total cost including commission was',
 --Trim removes all the spaces from the start of the string
 CONCAT(' ', LTRIM(TO_CHAR(SUM(specCommission + (qtyUsed * prodUnitPrice)), 'L99G999D99MI', 'NLS_CURRENCY = ''€'' '))
 )))))))))) AS "High Value Specifications"
-
+ --Joins all three columns since the columns are shared for specification and specprod adn then specprod and product
 FROM SPECIFICATION
 NATURAL JOIN SPECPROD
 NATURAL JOIN PRODUCT
